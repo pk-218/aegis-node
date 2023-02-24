@@ -5,8 +5,9 @@ use aegis_node_common::{packet_info::PacketInfo, Direct};
 use aegis_node_common::EventData;
 use aya_bpf::{bindings::xdp_action, macros::xdp, programs::{XdpContext, ProbeContext}, macros::{map}, maps::{PerfEventArray, HashMap}, macros::{kprobe, kretprobe}, helpers::{bpf_get_current_pid_tgid, bpf_probe_read_kernel}};
 use aya_log_ebpf::info;
-
+// use chrono;
 use core::{mem, u16};
+// use std::time::SystemTime;
 use network_types::{
     eth::{EthHdr, EtherType},
     ip::{IpProto, Ipv4Hdr},
@@ -194,6 +195,7 @@ fn try_get_packet_info(ctx: XdpContext) -> Result<u32, ()> {
         dest_port: dest_port,
         protocol: protocol_used,
         packet_length: h_proto,
+        // time: SystemTime::now(),
     };
 
     unsafe {

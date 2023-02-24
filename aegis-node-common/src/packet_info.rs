@@ -7,4 +7,5 @@ pub struct PacketInfo {
     pub dest_port: u16,
     pub protocol: i32,
     pub packet_length: u16,
+    // pub time: u32,
 }
