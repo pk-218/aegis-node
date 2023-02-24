@@ -13,6 +13,15 @@ use network_types::{
     udp::UdpHdr,
 };
 
+#[derive(Serialize, Debug)]
+struct PacketInfo {
+    src_ip: String,
+    dest_ip: String,
+    src_port: i32,
+    dest_port: i32,
+    protocol: String,
+}
+
 #[panic_handler]
 fn panic(_info: &core::panic::PanicInfo) -> ! {
     unsafe { core::hint::unreachable_unchecked() }
@@ -26,8 +35,7 @@ pub fn get_packet_info(ctx: XdpContext) -> u32 {
     }
 }
 
-#[inline(always)] // 
-
+#[inline(always)] 
 fn ptr_at<T>(ctx: &XdpContext, offset: usize) -> Result<*const T, ()> {
     let start = ctx.data();
     let end = ctx.data_end();
@@ -51,19 +59,16 @@ fn try_get_packet_info(ctx: XdpContext) -> Result<u32, ()> {
     let ipv4hdr: *const Ipv4Hdr = ptr_at(&ctx, EthHdr::LEN)?;
     let source_addr = u32::from_be(unsafe { (*ipv4hdr).src_addr });
     let dest_addr = u32::from_be(unsafe{(*ipv4hdr).dst_addr});
-    // let mut protocol_used:&str = "";
 
     let mut source_port:u16 = 0;
     let mut dest_port:u16 = 0;
     match unsafe { (*ipv4hdr).proto } {
         IpProto::Tcp => {
-            // protocol_used = "TCP";
             let tcphdr: *const TcpHdr =
                 ptr_at(&ctx, EthHdr::LEN + Ipv4Hdr::LEN)?;
             source_port = u16::from_be(unsafe { (*tcphdr).source })
         },
         IpProto::Udp => {
-            // protocol_used = "UDP";
             let udphdr: *const UdpHdr =
                 ptr_at(&ctx, EthHdr::LEN + Ipv4Hdr::LEN)?;
             source_port = u16::from_be(unsafe { (*udphdr).source })
@@ -108,9 +113,6 @@ fn try_get_packet_info(ctx: XdpContext) -> Result<u32, ()> {
         IpProto::Ipv6 => {"Ipv6"},
         _ => {"Other"},
     };
-    
-
-
 
     info!(
         &ctx,
