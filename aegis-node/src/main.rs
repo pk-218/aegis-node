@@ -1,4 +1,4 @@
-use std::net;
+use std::{net, time::SystemTime, alloc::System, fmt::format};
 use reqwest;
 use reqwest::Error;
 use aegis_node_common::packet_info::PacketInfo;
@@ -27,6 +27,7 @@ struct PacketInfoDto {
     dest_port: u16,
     protocol: i32,
     size: u16,
+    time: String
 }
 
 #[derive(Error, Debug)]
@@ -124,7 +125,8 @@ async fn main() -> Result<(), anyhow::Error> {
                         src_port: data.src_port,
                         dest_port: data.dest_port,
                         protocol: data.protocol,
-                        size: data.packet_length
+                        size: data.packet_length,
+                        time: format!("{:?}", SystemTime::now())
                     };
 
                     let j = serde_json::to_string(&packet_dto).unwrap();

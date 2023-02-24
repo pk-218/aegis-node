@@ -10,6 +10,7 @@ aya-log-ebpf = { git = "https://github.com/aya-rs/aya", branch = "main" }
 aegis-node-common = { path = "../aegis-node-common" }
 network-types = "0.0.4"
 
+
 [[bin]]
 name = "xdp-log"
 path = "src/main.rs"
