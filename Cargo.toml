@@ -1,0 +1,2 @@
+[workspace]
+members = ["aegis-node", "aegis-node-common", "xtask"]

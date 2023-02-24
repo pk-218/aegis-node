@@ -1,0 +1,3 @@
+{
+  "rust-analyzer.linkedProjects": ["Cargo.toml", "aegis-node-ebpf/Cargo.toml"]
+}
