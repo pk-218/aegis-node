@@ -2,7 +2,7 @@ use std::net;
 use reqwest;
 use reqwest::Error;
 use aegis_node_common::packet_info::PacketInfo;
-use aya::{include_bytes_aligned, Bpf, maps::perf::AsyncPerfEventArray, util::online_cpus};
+use aya::{include_bytes_aligned, Bpf, maps::perf::AsyncPerfEventArray, util::online_cpus, programs::KProbe};
 use anyhow::Context;
 use aya::programs::{Xdp, XdpFlags};
 use aya_log::BpfLogger;
@@ -59,6 +59,8 @@ async fn main() -> Result<(), anyhow::Error> {
     let mut bpf = Bpf::load(include_bytes_aligned!(
         "../../target/bpfel-unknown-none/release/xdp-log"
     ))?;
+
+
     if let Err(e) = BpfLogger::init(&mut bpf) {
         // This can happen if you remove all log statements from your eBPF program.
         warn!("failed to initialize eBPF logger: {}", e);
@@ -68,13 +70,17 @@ async fn main() -> Result<(), anyhow::Error> {
     program.attach(&opt.iface, XdpFlags::default())
         .context("failed to attach the XDP program with default flags - try changing XdpFlags::default() to XdpFlags::SKB_MODE")?;
 
+    // let program_kprobe :&mut KProbe= bpf1.program_mut("tcp_send").unwrap().try_into()?;
+    // program_kprobe.load()?;
+    // program_kprobe.attach("tcp_sendmsg", 0)?;
+    // program_kprobe.attach("tcp_sendpage", 0)?;
 
     let mut packets: AsyncPerfEventArray<_> = bpf.map_mut("PACKETS").unwrap().try_into().unwrap();
-    let client = reqwest::Client::new();
-    let res = client.get("https://aegis-hub.onrender.com/healthz");
-    let res1 = res.send().await?;
-    println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-    println!("{:?}", res1);
+    // let client = reqwest::Client::new();
+    // let res = client.get("https://aegis-hub.onrender.com/healthz");
+    // let res1 = res.send().await?;
+    // println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+    // println!("{:?}", res1);
     for cpu_id in online_cpus()? {
         let mut packets_buf = packets.open(cpu_id, Some(256))?;
         spawn(async move {
@@ -99,7 +105,7 @@ async fn main() -> Result<(), anyhow::Error> {
 
                     let j = serde_json::to_string(&packet_dto).unwrap();
                     // println!("Packet JSON {:}", j);
-                    // send_post_reqwest(j).await?
+                    // send_post_reqwest(j).await?;
                     let client = reqwest::Client::new();
                     let request = client.post("http://127.0.0.1:8000/process-logs")
                         .header(reqwest::header::CONTENT_TYPE, "application/json")
