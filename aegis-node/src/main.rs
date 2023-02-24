@@ -2,15 +2,16 @@ use std::net;
 use reqwest;
 use reqwest::Error;
 use aegis_node_common::packet_info::PacketInfo;
-use aya::{include_bytes_aligned, Bpf, maps::perf::AsyncPerfEventArray, util::online_cpus};
+use aya::{include_bytes_aligned, Bpf, maps::perf::AsyncPerfEventArray, util::online_cpus, BtfError};
 use anyhow::Context;
-use aya::programs::{Xdp, XdpFlags};
+use aya::programs::{Xdp, XdpFlags, ProgramError};
 use aya_log::BpfLogger;
 use clap::Parser;
 use log::{info, warn};
 use tokio::{signal, spawn};
 use serde::Serialize;
 use bytes::BytesMut;
+use thiserror::Error;
 
 #[derive(Debug, Parser)]
 struct Opt {
@@ -26,6 +27,28 @@ struct PacketInfoDto {
     dest_port: u16,
     protocol: i32,
     size: u16,
+}
+
+#[derive(Error, Debug)]
+pub enum AttachError {
+    #[error(transparent)]
+    Btf(#[from] BtfError),
+
+    #[error(transparent)]
+    Program(#[from] ProgramError),
+
+    #[error("could not load the program")]
+    ProgLoad,
+}
+
+fn attach_programs(opt: Opt, bpf: &mut Bpf) -> Result<(), AttachError> {
+    let program: &mut Xdp = bpf.program_mut("get_packet_info").ok_or(AttachError::ProgLoad)?.try_into()?;
+    program.load();
+    program.attach(&opt.iface, XdpFlags::default());
+
+
+
+    Ok(())
 }
 
 async fn send_post_reqwest(j:String) -> Result<(), Error>{
@@ -52,7 +75,7 @@ async fn main() -> Result<(), anyhow::Error> {
     // like to specify the eBPF program at runtime rather than at compile-time, you can
     // reach for `Bpf::load_file` instead.
     #[cfg(debug_assertions)]
-    let mut bpf = Bpf::load(include_bytes_aligned!(
+    let mut bpf: Bpf = Bpf:load(include_bytes_aligned!(
         "../../target/bpfel-unknown-none/debug/xdp-log"
     ))?;
     #[cfg(not(debug_assertions))]
@@ -70,11 +93,6 @@ async fn main() -> Result<(), anyhow::Error> {
 
 
     let mut packets: AsyncPerfEventArray<_> = bpf.map_mut("PACKETS").unwrap().try_into().unwrap();
-    let client = reqwest::Client::new();
-    let res = client.get("https://aegis-hub.onrender.com/healthz");
-    let res1 = res.send().await?;
-    println!("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-    println!("{:?}", res1);
     for cpu_id in online_cpus()? {
         let mut packets_buf = packets.open(cpu_id, Some(256))?;
         spawn(async move {
@@ -98,22 +116,18 @@ async fn main() -> Result<(), anyhow::Error> {
                     };
 
                     let j = serde_json::to_string(&packet_dto).unwrap();
-                    // println!("Packet JSON {:}", j);
-                    // send_post_reqwest(j).await?
+                    println!("Packet JSON {:}", j);
+
                     let client = reqwest::Client::new();
-                    let request = client.post("http://127.0.0.1:8000/process-logs")
+                    let request = client.post("https://aegis-hub.onrender.com/process-logs")
                         .header(reqwest::header::CONTENT_TYPE, "application/json")
                         .body(j);
 
-                    // // Send the POST request and wait for the response
                     tokio::spawn(async move{
                         let response = request.send().await.unwrap();
                         print!("{:?}", response);
                         println!("Sent request!");
                     });
-
-
-                    // println!(response);
                 }
             }
         });
