@@ -44,9 +44,19 @@ pub enum AttachError {
 fn attach_programs(opt: Opt, bpf: &mut Bpf) -> Result<(), AttachError> {
     let program: &mut Xdp = bpf.program_mut("get_packet_info").ok_or(AttachError::ProgLoad)?.try_into()?;
     program.load();
-    program.attach(&opt.iface, XdpFlags::default());
+    program.attach(&opt.iface, XdpFlags::default()).expect("Error attaching get_packet_info");
 
-
+    let program: &mut KProbe = bpf.program_mut("tcp_send").ok_or(AttachError::ProgLoad)?.try_into()?;
+    program.load();
+    program.attach("tcp_sendmsg", 0)?;
+    program.attach("tcp_sendpage", 0)?;
+    // program.attach("tcp_send", 0).expect("Error attaching tcp_send kprobe");
+    
+    let program: &mut KProbe = bpf.program_mut("ret_tcp_send").ok_or(AttachError::ProgLoad)?.try_into()?;
+    program.load();
+    program.attach("tcp_sendmsg", 0)?;
+    program.attach("tcp_sendpage", 0)?;
+    // program.attach("ret_tcp_send", 0).expect("Error attaching ret_tcp_send kprobe");
 
     Ok(())
 }
@@ -75,7 +85,7 @@ async fn main() -> Result<(), anyhow::Error> {
     // like to specify the eBPF program at runtime rather than at compile-time, you can
     // reach for `Bpf::load_file` instead.
     #[cfg(debug_assertions)]
-    let mut bpf: Bpf = Bpf:load(include_bytes_aligned!(
+    let mut bpf: Bpf = Bpf::load(include_bytes_aligned!(
         "../../target/bpfel-unknown-none/debug/xdp-log"
     ))?;
     #[cfg(not(debug_assertions))]
@@ -88,15 +98,11 @@ async fn main() -> Result<(), anyhow::Error> {
         // This can happen if you remove all log statements from your eBPF program.
         warn!("failed to initialize eBPF logger: {}", e);
     }
-    let program: &mut Xdp = bpf.program_mut("get_packet_info").unwrap().try_into()?;
-    program.load()?;
-    program.attach(&opt.iface, XdpFlags::default())
-        .context("failed to attach the XDP program with default flags - try changing XdpFlags::default() to XdpFlags::SKB_MODE")?;
-
-    // let program_kprobe :&mut KProbe= bpf1.program_mut("tcp_send").unwrap().try_into()?;
-    // program_kprobe.load()?;
-    // program_kprobe.attach("tcp_sendmsg", 0)?;
-    // program_kprobe.attach("tcp_sendpage", 0)?;
+    // let program: &mut Xdp = bpf.program_mut("get_packet_info").unwrap().try_into()?;
+    // program.load()?;
+    // program.attach(&opt.iface, XdpFlags::default())
+    //     .context("failed to attach the XDP program with default flags - try changing XdpFlags::default() to XdpFlags::SKB_MODE")?;
+    attach_programs(opt, &mut bpf).expect("Attaching eBPF programs failed");
 
     let mut packets: AsyncPerfEventArray<_> = bpf.map_mut("PACKETS").unwrap().try_into().unwrap();
     for cpu_id in online_cpus()? {

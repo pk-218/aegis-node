@@ -207,6 +207,19 @@ fn try_get_packet_info(ctx: XdpContext) -> Result<u32, ()> {
     Ok(xdp_action::XDP_PASS)
 }
 
+// #[cgroup_skb(name="check_outbound_traffic")]
+// pub fn check_outbound_traffic(ctx: SkBuffContext) -> i32 {
+//     match { try_check_outbound_traffic(ctx) } {
+//         Ok(ret) => ret,
+//         Err(_) => 0,
+//     }
+// }
+
+// fn try_check_outbound_traffic(ctx: SkBuffContext) -> Result<i32, i64> {
+//     let protocol = unsafe { (*ctx.skb.skb).cb};
+//     Ok(2)
+// }
+
 #[panic_handler]
 fn panic(_info: &core::panic::PanicInfo) -> ! {
     unsafe { core::hint::unreachable_unchecked() }
