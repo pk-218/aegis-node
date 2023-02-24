@@ -1,9 +1,8 @@
-use std::{net, time::SystemTime, alloc::System, fmt::format};
+use std::{net, time::SystemTime};
 use reqwest;
 use reqwest::Error;
 use aegis_node_common::packet_info::PacketInfo;
 use aya::{include_bytes_aligned, Bpf, maps::perf::AsyncPerfEventArray, util::online_cpus, BtfError, programs::KProbe};
-use anyhow::Context;
 use aya::programs::{Xdp, XdpFlags, ProgramError};
 use aya_log::BpfLogger;
 use clap::Parser;
@@ -44,17 +43,17 @@ pub enum AttachError {
 
 fn attach_programs(opt: Opt, bpf: &mut Bpf) -> Result<(), AttachError> {
     let program: &mut Xdp = bpf.program_mut("get_packet_info").ok_or(AttachError::ProgLoad)?.try_into()?;
-    program.load();
+    program.load().expect("Error loading Xdp program");
     program.attach(&opt.iface, XdpFlags::default()).expect("Error attaching get_packet_info");
 
-    let program: &mut KProbe = bpf.program_mut("tcp_send").ok_or(AttachError::ProgLoad)?.try_into()?;
-    program.load();
+    let program: &mut KProbe = bpf.program_mut("tcp_send").unwrap().try_into()?;
+    program.load()?;
     program.attach("tcp_sendmsg", 0)?;
     program.attach("tcp_sendpage", 0)?;
     // program.attach("tcp_send", 0).expect("Error attaching tcp_send kprobe");
     
-    let program: &mut KProbe = bpf.program_mut("ret_tcp_send").ok_or(AttachError::ProgLoad)?.try_into()?;
-    program.load();
+    let program: &mut KProbe = bpf.program_mut("ret_tcp_send").unwrap().try_into()?;
+    program.load()?;
     program.attach("tcp_sendmsg", 0)?;
     program.attach("tcp_sendpage", 0)?;
     // program.attach("ret_tcp_send", 0).expect("Error attaching ret_tcp_send kprobe");
@@ -130,7 +129,7 @@ async fn main() -> Result<(), anyhow::Error> {
                     };
 
                     let j = serde_json::to_string(&packet_dto).unwrap();
-                    println!("Packet JSON {:}", j);
+                    // println!("Packet JSON {:}", j);
 
                     let client = reqwest::Client::new();
                     let request = client.post("https://aegis-hub.onrender.com/process-logs")
