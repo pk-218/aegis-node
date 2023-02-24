@@ -1,10 +1,14 @@
-use aya::{include_bytes_aligned, Bpf};
+use std::net;
+
+use aegis_node_common::packet_info::PacketInfo;
+use aya::{include_bytes_aligned, Bpf, maps::perf::AsyncPerfEventArray, util::online_cpus};
 use anyhow::Context;
 use aya::programs::{Xdp, XdpFlags};
 use aya_log::BpfLogger;
 use clap::Parser;
 use log::{info, warn};
-use tokio::signal;
+use tokio::{signal, spawn};
+use bytes::BytesMut;
 
 #[derive(Debug, Parser)]
 struct Opt {
@@ -34,10 +38,31 @@ async fn main() -> Result<(), anyhow::Error> {
         // This can happen if you remove all log statements from your eBPF program.
         warn!("failed to initialize eBPF logger: {}", e);
     }
-    let program: &mut Xdp = bpf.program_mut("xdp").unwrap().try_into()?;
+    let program: &mut Xdp = bpf.program_mut("get_packet_info").unwrap().try_into()?;
     program.load()?;
     program.attach(&opt.iface, XdpFlags::default())
         .context("failed to attach the XDP program with default flags - try changing XdpFlags::default() to XdpFlags::SKB_MODE")?;
+
+
+    let mut packets: AsyncPerfEventArray<_> = bpf.map_mut("PACKETS").unwrap().try_into().unwrap();
+    for cpu_id in online_cpus()? {
+        let mut packets_buf = packets.open(cpu_id, Some(256))?;
+        spawn(async move {
+            let mut bufs = (0..10)
+                .map(|_| BytesMut::with_capacity(128 * 4096))
+                .collect::<Vec<_>>();
+            loop {
+                let events = packets_buf.read_events(&mut bufs).await.unwrap();
+                for i in 0..events.read {
+                    let buf = &mut bufs[i];
+                    let ptr = buf.as_ptr() as *const PacketInfo;
+                    let data = unsafe { ptr.read_unaligned() };
+                    let src_addr = net::Ipv4Addr::from(data.src_ip);
+                    println!("LOG: source address {}", src_addr);
+                }
+            }
+        });
+    }
 
     info!("Waiting for Ctrl-C...");
     signal::ctrl_c().await?;

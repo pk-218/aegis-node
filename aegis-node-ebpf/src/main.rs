@@ -2,10 +2,11 @@
 #![no_std]
 #![no_main]
 
-use aya_bpf::{bindings::xdp_action, macros::xdp, programs::XdpContext};
+use aegis_node_common::packet_info::PacketInfo;
+use aya_bpf::{bindings::xdp_action, macros::xdp, programs::XdpContext, macros::{map}, maps::PerfEventArray};
 use aya_log_ebpf::info;
 
-use core::mem;
+use core::{mem};
 use network_types::{
     eth::{EthHdr, EtherType},
     ip::{IpProto, Ipv4Hdr},
@@ -13,21 +14,14 @@ use network_types::{
     udp::UdpHdr,
 };
 
-#[derive(Serialize, Debug)]
-struct PacketInfo {
-    src_ip: String,
-    dest_ip: String,
-    src_port: i32,
-    dest_port: i32,
-    protocol: String,
-}
 
-#[panic_handler]
-fn panic(_info: &core::panic::PanicInfo) -> ! {
-    unsafe { core::hint::unreachable_unchecked() }
-}
 
-#[xdp]
+
+#[map(name="PACKETS")]
+static mut PACKETS: PerfEventArray<PacketInfo> = PerfEventArray::<PacketInfo>::with_max_entries(1024, 0);
+
+
+#[xdp(name="get_packet_info")]
 pub fn get_packet_info(ctx: XdpContext) -> u32 {
     match try_get_packet_info(ctx) {
         Ok(ret) => ret,
@@ -49,8 +43,7 @@ fn ptr_at<T>(ctx: &XdpContext, offset: usize) -> Result<*const T, ()> {
 }
 
 fn try_get_packet_info(ctx: XdpContext) -> Result<u32, ()> {
-    let ethhdr: *const EthHdr = ptr_at(&ctx, 0)?; // 
-
+    let ethhdr: *const EthHdr = ptr_at(&ctx, 0)?; 
     match unsafe { (*ethhdr).ether_type } {
         EtherType::Ipv4 => {}
         _ => return Ok(xdp_action::XDP_PASS),
@@ -114,10 +107,25 @@ fn try_get_packet_info(ctx: XdpContext) -> Result<u32, ()> {
         _ => {"Other"},
     };
 
-    info!(
-        &ctx,
-        "SRC IP: {:ipv4},  DEST IP: {:ipv4}, SOURCE PORT: {}, DEST PORT: {},PROTOCOL: {}", source_addr, dest_addr, source_port, dest_port, protocol_used
-    );
+    let packet_info = PacketInfo {
+        src_ip: source_addr,
+        dest_ip: dest_addr,
+        src_port: source_port,
+        dest_port: dest_port,
+    };
+
+    unsafe {
+        PACKETS.output(&ctx, &packet_info, 0);
+    };
+
+    // let j = serde_json::to_string(&packetInfo)?;
+
+    info!(&ctx, "{:ipv4}", source_addr);
 
     Ok(xdp_action::XDP_PASS)
+}
+
+#[panic_handler]
+fn panic(_info: &core::panic::PanicInfo) -> ! {
+    unsafe { core::hint::unreachable_unchecked() }
 }
