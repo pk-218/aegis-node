@@ -52,6 +52,8 @@ fn try_get_packet_info(ctx: XdpContext) -> Result<u32, ()> {
     let source_addr = u32::from_be(unsafe { (*ipv4hdr).src_addr });
     let dest_addr = u32::from_be(unsafe{(*ipv4hdr).dst_addr});
 
+    let h_proto = u16::from_be(unsafe { *ptr_at(&ctx, EthHdr::LEN+16)? });
+
     let mut source_port:u16 = 0;
     let mut dest_port:u16 = 0;
     match unsafe { (*ipv4hdr).proto } {
@@ -112,6 +114,7 @@ fn try_get_packet_info(ctx: XdpContext) -> Result<u32, ()> {
         src_port: source_port,
         dest_port: dest_port,
         protocol: protocol_used,
+        packet_length: h_proto,
     };
 
     unsafe {
@@ -120,7 +123,7 @@ fn try_get_packet_info(ctx: XdpContext) -> Result<u32, ()> {
 
     // let j = serde_json::to_string(&packetInfo)?;
 
-    info!(&ctx, "{:ipv4}", source_addr);
+    info!(&ctx, "{:ipv4} {}", source_addr, h_proto);
 
     Ok(xdp_action::XDP_PASS)
 }
