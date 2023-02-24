@@ -19,8 +19,8 @@ fn panic(_info: &core::panic::PanicInfo) -> ! {
 }
 
 #[xdp]
-pub fn xdp_firewall(ctx: XdpContext) -> u32 {
-    match try_xdp_firewall(ctx) {
+pub fn get_packet_info(ctx: XdpContext) -> u32 {
+    match try_get_packet_info(ctx) {
         Ok(ret) => ret,
         Err(_) => xdp_action::XDP_ABORTED,
     }
@@ -40,7 +40,7 @@ fn ptr_at<T>(ctx: &XdpContext, offset: usize) -> Result<*const T, ()> {
     Ok((start + offset) as *const T)
 }
 
-fn try_xdp_firewall(ctx: XdpContext) -> Result<u32, ()> {
+fn try_get_packet_info(ctx: XdpContext) -> Result<u32, ()> {
     let ethhdr: *const EthHdr = ptr_at(&ctx, 0)?; // 
 
     match unsafe { (*ethhdr).ether_type } {
