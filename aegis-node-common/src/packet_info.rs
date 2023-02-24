@@ -3,4 +3,5 @@ pub struct PacketInfo {
     pub dest_ip: u32,
     pub src_port: u16,
     pub dest_port: u16,
+    pub protocol: i32,
 }

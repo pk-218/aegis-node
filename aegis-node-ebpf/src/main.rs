@@ -91,20 +91,20 @@ fn try_get_packet_info(ctx: XdpContext) -> Result<u32, ()> {
 
     let protocol_used = match unsafe{(*ipv4hdr).proto} {
         IpProto::HopOpt => {
-            "HopOpt"
+            0
         },
-        IpProto::Icmp => {"Icmp"},
-        IpProto::Igmp => {"Igmp"},
-        IpProto::Ggp => {"Ggp"},
-        IpProto::Ipv4 => {"Ipv4"},
-        IpProto::Stream => {"Stream"},
-        IpProto::Tcp => {"Tcp"},
-        IpProto::Cbt => {"Cbt"},
-        IpProto::Egp => {"Egp"},
-        IpProto::Igp => {"Igp"},
-        IpProto::Udp => {"Udp"},
-        IpProto::Ipv6 => {"Ipv6"},
-        _ => {"Other"},
+        IpProto::Icmp => {1},
+        IpProto::Igmp => {2},
+        IpProto::Ggp => {3},
+        IpProto::Ipv4 => {4},
+        IpProto::Stream => {5},
+        IpProto::Tcp => {6},
+        IpProto::Cbt => {7},
+        IpProto::Egp => {8},
+        IpProto::Igp => {9},
+        IpProto::Udp => {10},
+        IpProto::Ipv6 => {11},
+        _ => {100},
     };
 
     let packet_info = PacketInfo {
@@ -112,6 +112,7 @@ fn try_get_packet_info(ctx: XdpContext) -> Result<u32, ()> {
         dest_ip: dest_addr,
         src_port: source_port,
         dest_port: dest_port,
+        protocol: protocol_used,
     };
 
     unsafe {
