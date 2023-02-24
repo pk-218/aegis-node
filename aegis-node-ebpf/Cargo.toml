@@ -1,5 +1,6 @@
+
 [package]
-name = "aegis-node-ebpf"
+name = "xdp-log-ebpf"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,9 +8,10 @@ edition = "2021"
 aya-bpf = { git = "https://github.com/aya-rs/aya", branch = "main" }
 aya-log-ebpf = { git = "https://github.com/aya-rs/aya", branch = "main" }
 aegis-node-common = { path = "../aegis-node-common" }
+network-types = "0.0.4"
 
 [[bin]]
-name = "aegis-node"
+name = "xdp-log"
 path = "src/main.rs"
 
 [profile.dev]

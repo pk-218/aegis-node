@@ -1,6 +1,6 @@
+use aya::{include_bytes_aligned, Bpf};
 use anyhow::Context;
 use aya::programs::{Xdp, XdpFlags};
-use aya::{include_bytes_aligned, Bpf};
 use aya_log::BpfLogger;
 use clap::Parser;
 use log::{info, warn};
@@ -8,7 +8,7 @@ use tokio::signal;
 
 #[derive(Debug, Parser)]
 struct Opt {
-    #[clap(short, long, default_value = "eth0")]
+    #[clap(short, long, default_value = "wlo1")]
     iface: String,
 }
 
@@ -24,17 +24,17 @@ async fn main() -> Result<(), anyhow::Error> {
     // reach for `Bpf::load_file` instead.
     #[cfg(debug_assertions)]
     let mut bpf = Bpf::load(include_bytes_aligned!(
-        "../../target/bpfel-unknown-none/debug/aegis-node"
+        "../../target/bpfel-unknown-none/debug/xdp-log"
     ))?;
     #[cfg(not(debug_assertions))]
     let mut bpf = Bpf::load(include_bytes_aligned!(
-        "../../target/bpfel-unknown-none/release/aegis-node"
+        "../../target/bpfel-unknown-none/release/xdp-log"
     ))?;
     if let Err(e) = BpfLogger::init(&mut bpf) {
         // This can happen if you remove all log statements from your eBPF program.
         warn!("failed to initialize eBPF logger: {}", e);
     }
-    let program: &mut Xdp = bpf.program_mut("aegis_node").unwrap().try_into()?;
+    let program: &mut Xdp = bpf.program_mut("xdp").unwrap().try_into()?;
     program.load()?;
     program.attach(&opt.iface, XdpFlags::default())
         .context("failed to attach the XDP program with default flags - try changing XdpFlags::default() to XdpFlags::SKB_MODE")?;
