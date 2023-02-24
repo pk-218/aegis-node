@@ -5,7 +5,7 @@ use aegis_node_common::packet_info::PacketInfo;
 use aya_bpf::{bindings::xdp_action, macros::xdp, programs::XdpContext, macros::{map}, maps::PerfEventArray};
 use aya_log_ebpf::info;
 
-use core::{mem};
+use core::{mem, u16};
 use network_types::{
     eth::{EthHdr, EtherType},
     ip::{IpProto, Ipv4Hdr},
@@ -51,8 +51,7 @@ fn try_get_packet_info(ctx: XdpContext) -> Result<u32, ()> {
     let ipv4hdr: *const Ipv4Hdr = ptr_at(&ctx, EthHdr::LEN)?;
     let source_addr = u32::from_be(unsafe { (*ipv4hdr).src_addr });
     let dest_addr = u32::from_be(unsafe{(*ipv4hdr).dst_addr});
-
-    let h_proto = u16::from_be(unsafe { *ptr_at(&ctx, EthHdr::LEN+16)? });
+    let h_proto= u16::from_be(unsafe {*ptr_at(&ctx, EthHdr::LEN+16)?});
 
     let mut source_port:u16 = 0;
     let mut dest_port:u16 = 0;

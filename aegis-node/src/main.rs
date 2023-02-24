@@ -24,6 +24,7 @@ struct PacketInfoDto {
     src_port: u16,
     dest_port: u16,
     protocol: i32,
+    size: u16,
 }
 
 #[tokio::main]
@@ -73,7 +74,8 @@ async fn main() -> Result<(), anyhow::Error> {
                         dest_ip: net::Ipv4Addr::from(data.dest_ip).to_string(),
                         src_port: data.src_port,
                         dest_port: data.dest_port,
-                        protocol: data.protocol
+                        protocol: data.protocol,
+                        size: data.packet_length
                     };
 
                     let j = serde_json::to_string(&packet_dto).unwrap();

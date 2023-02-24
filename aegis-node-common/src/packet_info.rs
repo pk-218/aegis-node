@@ -1,3 +1,5 @@
+#[derive(Clone, Copy)]
+#[repr(packed)]
 pub struct PacketInfo {
     pub src_ip: u32,
     pub dest_ip: u32,
