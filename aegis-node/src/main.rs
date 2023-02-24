@@ -2,7 +2,7 @@ use std::net;
 use reqwest;
 use reqwest::Error;
 use aegis_node_common::packet_info::PacketInfo;
-use aya::{include_bytes_aligned, Bpf, maps::perf::AsyncPerfEventArray, util::online_cpus, BtfError};
+use aya::{include_bytes_aligned, Bpf, maps::perf::AsyncPerfEventArray, util::online_cpus, BtfError, programs::KProbe};
 use anyhow::Context;
 use aya::programs::{Xdp, XdpFlags, ProgramError};
 use aya_log::BpfLogger;
@@ -82,6 +82,8 @@ async fn main() -> Result<(), anyhow::Error> {
     let mut bpf = Bpf::load(include_bytes_aligned!(
         "../../target/bpfel-unknown-none/release/xdp-log"
     ))?;
+
+
     if let Err(e) = BpfLogger::init(&mut bpf) {
         // This can happen if you remove all log statements from your eBPF program.
         warn!("failed to initialize eBPF logger: {}", e);
@@ -91,6 +93,10 @@ async fn main() -> Result<(), anyhow::Error> {
     program.attach(&opt.iface, XdpFlags::default())
         .context("failed to attach the XDP program with default flags - try changing XdpFlags::default() to XdpFlags::SKB_MODE")?;
 
+    // let program_kprobe :&mut KProbe= bpf1.program_mut("tcp_send").unwrap().try_into()?;
+    // program_kprobe.load()?;
+    // program_kprobe.attach("tcp_sendmsg", 0)?;
+    // program_kprobe.attach("tcp_sendpage", 0)?;
 
     let mut packets: AsyncPerfEventArray<_> = bpf.map_mut("PACKETS").unwrap().try_into().unwrap();
     for cpu_id in online_cpus()? {
