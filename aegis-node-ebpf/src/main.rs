@@ -20,9 +20,9 @@ mod consts;
 type SockPtr = *mut u8;
 
 #[map]
-static mut SOCK_MAP: HashMap<u32, SockPtr> = HashMap::with_max_entries(1024, 0);
+static mut SOCK_MAP: HashMap<u32, SockPtr> = HashMap::with_max_entries(30, 0);
 #[map(name = "EVENTS")]
-static mut PERF_EVENTS: PerfEventArray<EventData> = PerfEventArray::with_max_entries(1024, 0);
+static mut PERF_EVENTS: PerfEventArray<EventData> = PerfEventArray::with_max_entries(30, 0);
 
 
 
@@ -34,7 +34,7 @@ fn get_filter_pid() -> u32 {
 }
 
 #[map(name="PACKETS")]
-static mut PACKETS: PerfEventArray<PacketInfo> = PerfEventArray::<PacketInfo>::with_max_entries(1024, 0);
+static mut PACKETS: PerfEventArray<PacketInfo> = PerfEventArray::<PacketInfo>::with_max_entries(30, 0);
 
 fn tcp_sendentry(ctx: ProbeContext) -> Result<(), i64> {
     info!(&ctx, "Running##########################");
